@@ -1,6 +1,7 @@
 # RAG-based Job Search Assistant
 
-This project aims to help your job search with GenAI!
+This project aims to help your job search with GenAI! and based on the [repo] (https://github.com/kyosek/RAG-based-job-search-assistant)
+The main is to make more useful for personal job search.
 
 Have you done a job search and ended up with too many jobs look like a good next step and didn't know where to start? This project seeks to assist and be an AI guidance for your job search.
 

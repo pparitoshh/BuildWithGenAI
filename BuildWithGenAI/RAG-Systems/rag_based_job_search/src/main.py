@@ -6,17 +6,22 @@ from llama_parse import LlamaParse
 from llama_index.agent.openai import OpenAIAgent
 from llama_index.llms.openai import OpenAI
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
-
+import os
 PERSIST_DIR = "./storage"
 MAX_ITER = 3
 
+LLAMA_PARSE_API_KEY = os.getenv("LLAMA_PARSE_API_KEY")
+if not LLAMA_PARSE_API_KEY:
+    raise ValueError("The API key is required. Please set the LLAMA_PARSE_API_KEY environment variable.")
+
+
 pdf_path = "input_cv/data-science-cv-example.pdf"
-query = "Can you itemise both the requirements of Job ID: 3831448644 and the skill sets of my CV and tell me which requirements and my skill sets are matched and missing?"
+query = "return Top jobs matching my input_cv"
 # query = "Is my experience good fit for the position Job ID: 3833524246?"
 # query = "Retrieve the most suitable job for me"
 
-parser = LlamaParse(result_type="markdown")
-llm = OpenAI(model="gpt-3.5-turbo-0613")
+parser = LlamaParse(result_type="markdown",api_key=LLAMA_PARSE_API_KEY)
+llm = OpenAI(model="gpt-4")
 agent = OpenAIAgent.from_tools(
     llm=llm,
     verbose=True,
