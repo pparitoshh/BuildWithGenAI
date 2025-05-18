@@ -1,0 +1,151 @@
+{
+  "name": "LinkedIn Job Alert Filter to Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "format": "resolved",
+        "criteria": {
+          "searchTerm": "subject:\"Job alert\"",
+          "includeSpamTrash": false
+        }
+      },
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "get",
+        "messageId": "={{$json[\"id\"]}}",
+        "format": "full",
+        "simplify": false
+      },
+      "name": "Get Full Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "\nconst htmlPart = $json.payload.parts.find(p => p.mimeType === 'text/html');\nconst base64 = htmlPart?.body?.data || '';\nconst decodedHtml = Buffer.from(base64, 'base64').toString('utf-8');\nreturn [{ json: { html: decodedHtml } }];\n"
+      },
+      "name": "Decode HTML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "create",
+        "chatCompletion": {
+          "model": "gpt-4o",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a job extraction assistant."
+            },
+            {
+              "role": "user",
+              "content": "\nBelow is the HTML content of a LinkedIn job alert email. Your task is to extract all job listings and return the following fields for each job:\n\n- Job Title  \n- Company  \n- Location  \n- Job Posting Date (if available)  \n- Number of Applicants (if available)  \n- Whether it is marked as \u201cActively recruiting\u201d  \n- Job Link (if available)\n\nFormat the output like this:\n\n1. **[Job Title]** \u2013 [Company] \u2013 [Location]  \n   \ud83d\udd17 Link: [URL]  \n   \ud83d\uddd3\ufe0f Posted: [Date]  \n   \ud83d\udc65 Applicants: [Number]  \n   \u2705 Actively Recruiting: Yes/No\n\nHere is the HTML:\n\n{{ $json.html }}\n"
+            }
+          ],
+          "temperature": 0.3
+        }
+      },
+      "name": "LLM Extract Jobs",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials-id",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{BOT_TOKEN}}/sendMessage",
+        "method": "POST",
+        "authentication": "none",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": {
+          "chat_id": "{{CHAT_ID}}",
+          "text": "{{$json[\"choices\"][0][\"message\"][\"content\"]}}",
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Full Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Full Email": {
+      "main": [
+        [
+          {
+            "node": "Decode HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode HTML": {
+      "main": [
+        [
+          {
+            "node": "LLM Extract Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Extract Jobs": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "tags": []
+}
